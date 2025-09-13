@@ -7,13 +7,18 @@ import java.util.Date;
 @RestController
 public class HealthController {
 
+    @GetMapping("/")
+    public String root() {
+        return "Application is running - " + new Date();
+    }
+
     @GetMapping("/health")
     public String healthCheck() {
-        return "OK - " + new Date();
+        return "OK";
     }
 
     @GetMapping("/api/health")
     public String apiHealthCheck() {
-        return "{\"status\": \"UP\", \"timestamp\": \"" + new Date() + "\"}";
+        return "{\"status\": \"UP\"}";
     }
 }

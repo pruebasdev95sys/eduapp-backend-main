@@ -50,23 +50,15 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
     }
 
     @Override
-    protected AuthenticationManager authenticationManager() throws Exception {
-        return super.authenticationManager();
-    }
-
-    @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.cors().and() // Habilita CORS
-            .csrf().disable()
+        http.cors().and().csrf().disable()
             .authorizeRequests()
             .antMatchers("/auth/**").permitAll()
-            // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ NUEVAS RUTAS PERMITIDAS SIN AUTENTICACIÓN ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-            .antMatchers("/health").permitAll()           // Health check personalizado
-            .antMatchers("/api/health").permitAll()       // Health check API personalizado
-            .antMatchers("/actuator/health").permitAll()  // Health check de Spring Actuator
-            .antMatchers("/actuator/info").permitAll()    // Info de Spring Actuator
-            .antMatchers("/error").permitAll()            // Páginas de error
-            // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NUEVAS RUTAS PERMITIDAS SIN AUTENTICACIÓN ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+            .antMatchers("/").permitAll()
+            .antMatchers("/health").permitAll()
+            .antMatchers("/api/health").permitAll()
+            .antMatchers("/actuator/**").permitAll()
+            .antMatchers("/error").permitAll()
             .anyRequest().authenticated()
             .and()
             .exceptionHandling().authenticationEntryPoint(jwtEntryPoint)
