@@ -15,8 +15,9 @@
 	<description>School Managment</description>
 	<properties>
 		<java.version>11</java.version>
-		<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>ISO-8859-1</project.reporting.outputEncoding>
+		<!-- Encoding corregido a UTF-8 para evitar problemas con caracteres especiales -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -28,7 +29,7 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- AGREGAR ESTA DEPENDENCIA -->
+		<!-- DEPENDENCIA ACTUATOR PARA HEALTH CHECKS (ESENCIAL PARA KOYEB) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -92,31 +93,18 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-			
-			<!-- Configuración específica para el plugin de recursos -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.2.0</version>
 				<configuration>
-					<encoding>ISO-8859-1</encoding>
-					<nonFilteredFileExtensions>
-						<nonFilteredFileExtension>png</nonFilteredFileExtension>
-						<nonFilteredFileExtension>jpg</nonFilteredFileExtension>
-						<nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
-						<nonFilteredFileExtension>gif</nonFilteredFileExtension>
-						<nonFilteredFileExtension>ico</nonFilteredFileExtension>
-					</nonFilteredFileExtensions>
+					<!-- Configuración para excluir devtools en producción -->
+					<excludeDevtools>true</excludeDevtools>
 				</configuration>
 			</plugin>
 		</plugins>
 		
-		<!-- Configuración para desactivar filtrado en recursos problemáticos -->
+		<!-- Configuración simplificada de recursos -->
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
-				<filtering>false</filtering>
+				<filtering>true</filtering>
 				<includes>
 					<include>**/*.properties</include>
 					<include>**/*.xml</include>

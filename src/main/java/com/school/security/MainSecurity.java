@@ -46,13 +46,11 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
     @Bean
     @Override
     public AuthenticationManager authenticationManagerBean() throws Exception {
-        // TODO Auto-generated method stub
         return super.authenticationManagerBean();
     }
 
     @Override
     protected AuthenticationManager authenticationManager() throws Exception {
-        // TODO Auto-generated method stub
         return super.authenticationManager();
     }
 
@@ -62,6 +60,13 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
             .csrf().disable()
             .authorizeRequests()
             .antMatchers("/auth/**").permitAll()
+            // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ NUEVAS RUTAS PERMITIDAS SIN AUTENTICACIÓN ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            .antMatchers("/health").permitAll()           // Health check personalizado
+            .antMatchers("/api/health").permitAll()       // Health check API personalizado
+            .antMatchers("/actuator/health").permitAll()  // Health check de Spring Actuator
+            .antMatchers("/actuator/info").permitAll()    // Info de Spring Actuator
+            .antMatchers("/error").permitAll()            // Páginas de error
+            // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NUEVAS RUTAS PERMITIDAS SIN AUTENTICACIÓN ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
             .anyRequest().authenticated()
             .and()
             .exceptionHandling().authenticationEntryPoint(jwtEntryPoint)
@@ -70,6 +75,4 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
 
         http.addFilterBefore(jwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
     }
-
-
 }
