@@ -1,5 +1,6 @@
 package com.school.controller;
 
+import com.school.config.DateTimeUtils;
 import com.school.model.*;
 import com.school.service.AsignacionService;
 import com.school.service.EstudianteService;
@@ -39,7 +40,7 @@ public class AsignacionController {
     @Autowired
     private EstudianteService estudianteService;
 
-    @PostMapping("/crear/{idClase}")
+   @PostMapping("/crear/{idClase}")
     public ResponseEntity<?> crearAsignacion(@Valid @RequestBody Asignacion asignacion, 
                                            BindingResult results, 
                                            @PathVariable Long idClase) {
@@ -68,14 +69,15 @@ public class AsignacionController {
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
-        // Validación adicional de fechas
+        // Validación adicional de fechas - USANDO DateTimeUtils
         if(asignacion.getFechaInicio() != null && asignacion.getFechaFin() != null) {
             if(asignacion.getFechaFin().isBefore(asignacion.getFechaInicio())) {
                 response.put("mensaje", "La fecha de finalización debe ser posterior a la fecha de inicio");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            if(asignacion.getFechaInicio().isBefore(LocalDateTime.now())) {
+            // CAMBIO CRÍTICO: Usar DateTimeUtils en lugar de LocalDateTime.now()
+            if(DateTimeUtils.isBeforeNow(asignacion.getFechaInicio())) {
                 response.put("mensaje", "La fecha de inicio no puede ser en el pasado");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
@@ -170,9 +172,9 @@ public class AsignacionController {
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
 
-            // 3.2 Validar que fechaInicio no sea en el pasado (solo si se modificó)
+            // 3.2 Validar que fechaInicio no sea en el pasado (solo si se modificó) - USANDO DateTimeUtils
             if (!asignacionExistente.getFechaInicio().isEqual(asignacion.getFechaInicio()) &&
-                asignacion.getFechaInicio().isBefore(LocalDateTime.now())) {
+                DateTimeUtils.isBeforeNow(asignacion.getFechaInicio())) { // CAMBIO CRÍTICO
                 response.put("mensaje", "No se puede cambiar la fecha de inicio a una fecha pasada");
                 return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
             }
