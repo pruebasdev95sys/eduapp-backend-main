@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -50,15 +51,30 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
     }
 
     @Override
+    public void configure(WebSecurity web) throws Exception {
+        // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NUEVO MÉTODO ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+        web.ignoring().antMatchers(
+            "/",
+            "/health", 
+            "/api/health",
+            "/actuator/health",
+            "/actuator/info",
+            "/error"
+        );
+    }
+
+    @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.cors().and().csrf().disable()
             .authorizeRequests()
             .antMatchers("/auth/**").permitAll()
+            // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ MANTIENE ESTO TAMBIÉN ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
             .antMatchers("/").permitAll()
             .antMatchers("/health").permitAll()
             .antMatchers("/api/health").permitAll()
             .antMatchers("/actuator/**").permitAll()
             .antMatchers("/error").permitAll()
+            // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ MANTIENE ESTO TAMBIÉN ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
             .anyRequest().authenticated()
             .and()
             .exceptionHandling().authenticationEntryPoint(jwtEntryPoint)
