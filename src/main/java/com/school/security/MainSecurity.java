@@ -52,11 +52,11 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
 
     @Override
     public void configure(WebSecurity web) throws Exception {
-        // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NUEVO MÉTODO ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
         web.ignoring().antMatchers(
             "/",
             "/health", 
             "/api/health",
+            "/api/time/**",  // ← AGREGA ESTA LÍNEA
             "/actuator/health",
             "/actuator/info",
             "/error"
@@ -68,13 +68,12 @@ public class MainSecurity extends WebSecurityConfigurerAdapter {
         http.cors().and().csrf().disable()
             .authorizeRequests()
             .antMatchers("/auth/**").permitAll()
-            // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ MANTIENE ESTO TAMBIÉN ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            .antMatchers("/api/time/**").permitAll()  
             .antMatchers("/").permitAll()
             .antMatchers("/health").permitAll()
             .antMatchers("/api/health").permitAll()
             .antMatchers("/actuator/**").permitAll()
             .antMatchers("/error").permitAll()
-            // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ MANTIENE ESTO TAMBIÉN ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
             .anyRequest().authenticated()
             .and()
             .exceptionHandling().authenticationEntryPoint(jwtEntryPoint)
