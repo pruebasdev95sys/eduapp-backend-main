@@ -6,6 +6,7 @@ import com.school.model.Empleado;
 import com.school.model.Especialidad;
 import com.school.model.Estudiante;
 import com.school.reportDto.ReporteEmpleados;
+import com.school.security.enums.RolNombre;
 import com.school.service.EmpleadoService;
 import com.school.service.EspecialidadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate;
 
 //@CrossOrigin(origins = {"http://localhost:4200"})
 @RestController
@@ -204,30 +207,66 @@ public class EmpleadoController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
+    @Transactional(readOnly = true)  // ← Esta anotación es NECESARIA
     public ResponseEntity<?> deleteEmpleado(@PathVariable Long id){
 
         Map<String, Object> response = new HashMap<>();
-        Empleado empleado = empleadoService.getEmpleadoById(id).orElse(null);
 
-        if(empleado == null) {
+        // Primero obtener el empleado con relaciones usando el método existente
+        Optional<Empleado> empleadoOpt = empleadoService.getEmpleadoById(id);
+
+        if(!empleadoOpt.isPresent()) {
             response.put("mensaje", "Error: No se pudo eliminar, el empleado con el ID: ".concat(id.toString().concat(" no existe en la base de datos")));
             return new ResponseEntity<Map<String, Object>>(response, HttpStatus.NOT_FOUND);
         }
 
+        Empleado empleado = empleadoOpt.get();
+
+        // Forzar la carga de las relaciones LAZY manualmente
         try {
-            for(Especialidad e: empleado.getEspecialidades()){
-                empleado.getEspecialidades().remove(e);
+            // Forzar la carga del usuario y sus roles
+            if(empleado.getUsuario() != null) {
+                Hibernate.initialize(empleado.getUsuario().getRoles());
             }
-            empleadoService.delete(id);
+            // Forzar la carga de las especialidades si es necesario
+            Hibernate.initialize(empleado.getEspecialidades());
+
+        } catch (Exception e) {
+            response.put("mensaje", "Error al cargar la información del empleado");
+            response.put("error", e.getMessage());
+            return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        // Verificar si el empleado tiene usuario y si el usuario tiene rol de administrador
+        if(empleado.getUsuario() != null && empleado.getUsuario().getRoles() != null) {
+            boolean esAdmin = empleado.getUsuario().getRoles().stream()
+                    .anyMatch(rol -> rol.getRolNombre() == RolNombre.ROLE_ADMIN);
+
+            if(esAdmin) {
+                response.put("mensaje", "Error: No se puede eliminar un usuario con rol de administrador");
+                return new ResponseEntity<Map<String, Object>>(response, HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        try {
+            // Eliminar las especialidades asociadas
+            empleado.getEspecialidades().clear();
+
+            // Luego eliminar el empleado
+            boolean eliminado = empleadoService.delete(id);
+
+            if(!eliminado) {
+                response.put("mensaje", "Error al eliminar el empleado");
+                return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
         } catch (DataAccessException e) {
             response.put("mensaje", "Error al eliminar el empleado en la base de datos");
             response.put("error", e.getMessage().concat(": ").concat(e.getMostSpecificCause().getMessage()));
-
             return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         response.put("mensaje", "El empleado ha sido eliminado con éxito");
-
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
     }
 
