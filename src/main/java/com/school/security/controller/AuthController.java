@@ -235,103 +235,114 @@ public class AuthController {
 	
 	
 	// Endpoint para obtener la info del usuario autenticado
-@GetMapping("/userinfo")
-public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String token) {
-    Map<String, Object> response = new HashMap<>();
-    
-    try {
-        String jwt = token.substring(7);
-        String username = jwtProvider.getUsernameFromToken(jwt);
-        
-        Optional<Usuario> usuarioOpt = usuarioService.findByUsername(username);
-        if (!usuarioOpt.isPresent()) {
-            response.put("mensaje", "Usuario no encontrado");
-            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-        }
+	@GetMapping("/userinfo")
+	public ResponseEntity<?> getUserInfo(@RequestHeader("Authorization") String token) {
+		Map<String, Object> response = new HashMap<>();
 
-        Usuario usuario = usuarioOpt.get();
-        UserInfoDTO userInfo = null;
+		try {
+			String jwt = token.substring(7);
+			String username = jwtProvider.getUsernameFromToken(jwt);
 
-        // Buscar información como empleado
-        Empleado empleado = empleadoService.findByUsuarioId(usuario.getId()).orElse(null);
-        if (empleado != null) {
-            // Obtener nombres de especialidades
-            List<String> especialidadesNombres = empleado.getEspecialidades()
-                .stream()
-                .map(esp -> esp.getNombre())
-                .collect(Collectors.toList());
+			Optional<Usuario> usuarioOpt = usuarioService.findByUsername(username);
+			if (!usuarioOpt.isPresent()) {
+				response.put("mensaje", "Usuario no encontrado");
+				return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+			}
 
-            userInfo = new UserInfoDTO(
-                empleado.getNombres(),
-                empleado.getApellidoPaterno(),
-                empleado.getApellidoMaterno(),
-                "Profesor",
-                empleado.getFechaNacimiento(),
-                empleado.getCui(),
-                empleado.getDomicilio(),
-                empleado.getCelular(),
-                empleado.getSexo(),
-                empleado.getCorreo(),
-                especialidadesNombres
-            );
-        } else {
-            // Buscar información como estudiante
-            Estudiante estudiante = estudianteService.findByUsuarioId(usuario.getId()).orElse(null);
-            if (estudiante != null) {
-                String gradoNombre = estudiante.getGrado() != null ? estudiante.getGrado().getNombre() : null;
-                String nivelNombre = estudiante.getNivel() != null ? estudiante.getNivel().getNombre() : null;
-                String turnoNombre = estudiante.getTurno() != null ? estudiante.getTurno().getNombre() : null;
-                String aulaNombre = estudiante.getAulaEstudiante() != null ? estudiante.getAulaEstudiante().getNombre() : null;
-                String apoderadoNombre = estudiante.getApoderado() != null ? 
-                    estudiante.getApoderado().getNombres() + " " + estudiante.getApoderado().getApellidoPaterno() : null;
-                String apoderadoCelular = estudiante.getApoderado() != null ? estudiante.getApoderado().getCelular() : null;
+			Usuario usuario = usuarioOpt.get();
+			UserInfoDTO userInfo = null;
 
-                userInfo = new UserInfoDTO(
-                    estudiante.getNombres(),
-                    estudiante.getApellidoPaterno(),
-                    estudiante.getApellidoMaterno(),
-                    "Estudiante",
-                    estudiante.getFechaNacimiento(),
-                    estudiante.getCui(),
-                    estudiante.getDomicilio(),
-                    estudiante.getCelular(),
-                    estudiante.getSexo(),
-                    estudiante.getCorreo(),
-                    gradoNombre,
-                    nivelNombre,
-                    turnoNombre,
-                    aulaNombre,
-                    apoderadoNombre,
-                    apoderadoCelular
-                );
-            } else {
-                // Si no es empleado ni estudiante, asumimos que es admin
-                boolean isAdmin = usuario.getRoles().stream()
-                    .anyMatch(rol -> rol.getRolNombre().name().equals("ROLE_ADMIN"));
-                if (isAdmin) {
-                    userInfo = new UserInfoDTO(
-                        usuario.getUsername(),
-                        "",
-                        "",
-                        "Administrador"
-                    );
-                }
-            }
-        }
+			// PRIMERO VERIFICAR SI ES ADMIN (esto es lo más importante)
+			boolean isAdmin = usuario.getRoles().stream()
+					.anyMatch(rol -> rol.getRolNombre().name().equals("ROLE_ADMIN"));
 
-        if (userInfo == null) {
-            response.put("mensaje", "No se encontró información de empleado o estudiante");
-            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-        }
+			if (isAdmin) {
+				// Si es ADMIN, priorizar este rol sobre cualquier otro
+				userInfo = new UserInfoDTO(
+						"Administrador", // o podrías tener un campo de nombre para admin
+						"",
+						"",
+						"Administrador"
+				);
 
-        return new ResponseEntity<>(userInfo, HttpStatus.OK);
+				// Si el admin también tiene datos de empleado, los incluimos pero manteniendo el rol correcto
+				Empleado empleado = empleadoService.findByUsuarioId(usuario.getId()).orElse(null);
+				if (empleado != null) {
+					userInfo.setNombres(empleado.getNombres());
+					userInfo.setApellidoPaterno(empleado.getApellidoPaterno());
+					userInfo.setApellidoMaterno(empleado.getApellidoMaterno());
+					// Pero mantenemos el rol como "Administrador"
+				}
 
-    } catch (Exception e) {
-        response.put("mensaje", "Error al obtener la información del usuario");
-        response.put("error", e.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-}
+			} else {
+				// Si no es admin, entonces buscar como empleado o estudiante
+				Empleado empleado = empleadoService.findByUsuarioId(usuario.getId()).orElse(null);
+				if (empleado != null) {
+					List<String> especialidadesNombres = empleado.getEspecialidades()
+							.stream()
+							.map(esp -> esp.getNombre())
+							.collect(Collectors.toList());
+
+					userInfo = new UserInfoDTO(
+							empleado.getNombres(),
+							empleado.getApellidoPaterno(),
+							empleado.getApellidoMaterno(),
+							"Profesor", // Aquí mantenemos Profesor para empleados
+							empleado.getFechaNacimiento(),
+							empleado.getCui(),
+							empleado.getDomicilio(),
+							empleado.getCelular(),
+							empleado.getSexo(),
+							empleado.getCorreo(),
+							especialidadesNombres
+					);
+				} else {
+					// Buscar información como estudiante
+					Estudiante estudiante = estudianteService.findByUsuarioId(usuario.getId()).orElse(null);
+					if (estudiante != null) {
+						String gradoNombre = estudiante.getGrado() != null ? estudiante.getGrado().getNombre() : null;
+						String nivelNombre = estudiante.getNivel() != null ? estudiante.getNivel().getNombre() : null;
+						String turnoNombre = estudiante.getTurno() != null ? estudiante.getTurno().getNombre() : null;
+						String aulaNombre = estudiante.getAulaEstudiante() != null ? estudiante.getAulaEstudiante().getNombre() : null;
+						String apoderadoNombre = estudiante.getApoderado() != null ?
+								estudiante.getApoderado().getNombres() + " " + estudiante.getApoderado().getApellidoPaterno() : null;
+						String apoderadoCelular = estudiante.getApoderado() != null ? estudiante.getApoderado().getCelular() : null;
+
+						userInfo = new UserInfoDTO(
+								estudiante.getNombres(),
+								estudiante.getApellidoPaterno(),
+								estudiante.getApellidoMaterno(),
+								"Estudiante",
+								estudiante.getFechaNacimiento(),
+								estudiante.getCui(),
+								estudiante.getDomicilio(),
+								estudiante.getCelular(),
+								estudiante.getSexo(),
+								estudiante.getCorreo(),
+								gradoNombre,
+								nivelNombre,
+								turnoNombre,
+								aulaNombre,
+								apoderadoNombre,
+								apoderadoCelular
+						);
+					}
+				}
+			}
+
+			if (userInfo == null) {
+				response.put("mensaje", "No se encontró información del usuario");
+				return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+			}
+
+			return new ResponseEntity<>(userInfo, HttpStatus.OK);
+
+		} catch (Exception e) {
+			response.put("mensaje", "Error al obtener la información del usuario");
+			response.put("error", e.getMessage());
+			return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
 
 /**
  * Endpoint para cambiar contraseña de usuario logueado
