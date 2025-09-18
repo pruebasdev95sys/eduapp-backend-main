@@ -23,6 +23,11 @@ import java.util.HashMap;
 
 import java.util.Map;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.core.io.ClassPathResource;
+
 
 import javax.annotation.PostConstruct;
 
@@ -249,49 +254,83 @@ public class EstudianteServiceImpl implements EstudianteService{
         // Usa el constructor sin PasswordEncoder
         return new MatriculaEstudianteReporte(estudiante, matricula);
     }
-    
-    @Override
-    public byte[] generarReporteMatriculaEstudiante(String tipo, Long estudianteId) {
-        byte[] data = null;
-        MatriculaEstudianteReporte datosReporte = getDatosReporteMatricula(estudianteId);
-        
-        if (datosReporte == null) return data;
-        
-        try {
-            // Cargar el reporte desde resources
-            InputStream reportStream = getClass().getClassLoader().getResourceAsStream("reporteMatriculaEstudiante.jasper");
-            
-            if (reportStream == null) {
-                throw new RuntimeException("Archivo reporteMatriculaEstudiante.jasper no encontrado en resources");
-            }
-            
-            // Convertir el objeto a una lista para el datasource
-            List<MatriculaEstudianteReporte> datos = Arrays.asList(datosReporte);
-            
-            JasperReport jasperReport = (JasperReport) JRLoader.loadObject(reportStream);
-            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap<>(), new JRBeanCollectionDataSource(datos));
-            
-            if ("pdf".equals(tipo)) {
-                data = JasperExportManager.exportReportToPdf(jasperPrint);
-            } else {
-                SimpleXlsxReportConfiguration config = new SimpleXlsxReportConfiguration();
-                config.setOnePagePerSheet(true);
-                config.setIgnoreGraphics(false);
-                
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                Exporter exporter = new JRXlsxExporter();
-                exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
-                exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(out));
-                exporter.exportReport();
-                
-                data = out.toByteArray();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al generar reporte de matrícula del estudiante: " + e.getMessage(), e);
-        }
-        
-        return data;
-    }
+
+	@Override
+	public byte[] generarReporteMatriculaEstudiante(String tipo, Long estudianteId) {
+		byte[] data = null;
+		MatriculaEstudianteReporte datosReporte = getDatosReporteMatricula(estudianteId);
+
+		// ===== CÓDIGO DEBUG AÑADIDO AQUÍ =====
+		System.out.println("=== DEBUG: Buscando archivos en classpath ===");
+
+		try {
+			// Listar todos los recursos en el classpath
+			ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+			Resource[] resources = resolver.getResources("classpath:*");
+
+			for (Resource res : resources) {
+				if (res.getFilename() != null && res.getFilename().contains(".jasper")) {
+					System.out.println("JASPER ENCONTRADO: " + res.getFilename() + " - URL: " + res.getURL());
+				}
+			}
+
+			// Verificar el archivo específico
+			Resource resource = new ClassPathResource("reporteMatriculaEstudiante.jasper");
+			System.out.println("reporteMatriculaEstudiante.jasper existe: " + resource.exists());
+
+			if (resource.exists()) {
+				System.out.println("Ubicación: " + resource.getURL());
+			} else {
+				System.out.println("ARCHIVO NO ENCONTRADO - Listando directorio resources:");
+				Resource[] allResources = resolver.getResources("classpath:**/*");
+				for (Resource r : allResources) {
+					System.out.println(" - " + r.getFilename() + " : " + r.getURL());
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println("Error en debug: " + e.getMessage());
+		}
+		// ===== FIN CÓDIGO DEBUG =====
+
+		if (datosReporte == null) return data;
+
+		try {
+			// Cargar el reporte desde resources
+			InputStream reportStream = getClass().getClassLoader().getResourceAsStream("reporteMatriculaEstudiante.jasper");
+
+			if (reportStream == null) {
+				throw new RuntimeException("Archivo reporteMatriculaEstudiante.jasper no encontrado en resources");
+			}
+
+			// Convertir el objeto a una lista para el datasource
+			List<MatriculaEstudianteReporte> datos = Arrays.asList(datosReporte);
+
+			JasperReport jasperReport = (JasperReport) JRLoader.loadObject(reportStream);
+			JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, new HashMap<>(), new JRBeanCollectionDataSource(datos));
+
+			if ("pdf".equals(tipo)) {
+				data = JasperExportManager.exportReportToPdf(jasperPrint);
+			} else {
+				SimpleXlsxReportConfiguration config = new SimpleXlsxReportConfiguration();
+				config.setOnePagePerSheet(true);
+				config.setIgnoreGraphics(false);
+
+				ByteArrayOutputStream out = new ByteArrayOutputStream();
+				Exporter exporter = new JRXlsxExporter();
+				exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+				exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(out));
+				exporter.exportReport();
+
+				data = out.toByteArray();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error al generar reporte de matrícula del estudiante: " + e.getMessage(), e);
+		}
+
+		return data;
+	}
 
 }
